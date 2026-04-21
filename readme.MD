@@ -58,3 +58,11 @@ Berikut adalah pemahaman saya mengenai cara kerja ThreadPool yang baru saja diba
 4. **Eksekusi (`pool.execute`):** Ketika `handle_connection` selesai dipanggil, fungsi tersebut dibungkus dalam sebuah *closure* (sebagai `Job`) dan dikirimkan lewat saluran komunikasi. Salah satu `Worker` yang sedang tidak sibuk akan mengunci (`lock`) Mutex, mengambil pekerjaan tersebut, mengeksekusinya, dan kembali ke status siaga setelah selesai.
 
 Dengan arsitektur ini, jika ada *slow request* (seperti `/sleep`), ia hanya akan memblokir satu *Worker*. Tiga *Worker* lainnya tetap bebas untuk melayani *request* lain dengan cepat.
+
+## Commit Bonus Reflection notes
+
+Pada bagian bonus ini, saya mengganti fungsi `ThreadPool::new` menjadi `ThreadPool::build`. 
+
+**Perbandingan `new` vs `build`:**
+* **`new` (Menggunakan assert!):** Fungsi `new` mengevaluasi argumen menggunakan `assert!(size > 0)`. Jika ukuran *pool* yang diminta adalah 0, makro `assert!` akan memicu *panic*, menyebabkan program langsung berhenti (crash) saat itu juga. Ini kurang aman karena program pemanggil tidak diberi kesempatan untuk menangani kegagalan tersebut secara elegan.
+* **`build` (Mengembalikan Result):** Fungsi `build` mengembalikan tipe `Result<ThreadPool, PoolCreationError>`. Alih-alih *panic*, fungsi ini akan mengembalikan `Err` jika inputnya tidak valid. Ini adalah pendekatan idiomatik di ekosistem Rust yang mendorong *graceful error handling*. Dengan cara ini, kode pemanggil di `main.rs` dapat memutuskan sendiri tindakan pencegahannya (misalnya mencetak pesan *error* ke *stderr* dan melakukan *exit* secara terkontrol, atau mencoba menggunakan nilai *default* lain) tanpa membuat seluruh aplikasi *crash* secara tiba-tiba.
