@@ -45,3 +45,16 @@ Ketika saya menguji dengan membuka dua tab browser—satu mengakses `/sleep` dan
 **Mengapa hal ini terjadi?**
 Ini terjadi karena server kita saat ini beroperasi menggunakan **single thread**. Artinya, program ini mengeksekusi instruksi secara sekuensial (berurutan satu per satu) di satu jalur eksekusi utama. Saat fungsi `handle_connection` memproses permintaan `/sleep`, *thread* utama tersebut tertidur dan terblokir selama 10 detik. Karena tidak ada *thread* lain yang tersedia, server tidak dapat menerima, merespons, atau memproses koneksi baru yang masuk (seperti permintaan dari tab kedua) sampai permintaan pertama benar-benar selesai. 
 Di dunia nyata, arsitektur *single-threaded* seperti ini sangat berbahaya karena satu pengguna dengan koneksi lambat atau satu proses berat dapat membuat seluruh aplikasi *down* atau tidak responsif bagi seluruh pengguna lain.
+
+## Commit 5 Reflection notes
+
+Pada milestone ini, saya mengimplementasikan **Multithreaded Server** menggunakan konsep **ThreadPool**.
+
+Berikut adalah pemahaman saya mengenai cara kerja ThreadPool yang baru saja dibangun:
+
+1. **ThreadPool dan Worker:** Saat server dijalankan, `ThreadPool` membuat sejumlah `Worker` (pekerja) dengan jumlah yang sudah ditentukan (contoh: 4). Setiap `Worker` memiliki ID unik dan sebuah *thread* yang berjalan terus-menerus menunggu pekerjaan (*Job*).
+2. **Komunikasi menggunakan Channel (mpsc):** Untuk mengirim pekerjaan dari *thread* utama (yang menerima koneksi TCP) ke *thread* pekerja, kita menggunakan *channel* `mpsc` (Multiple Producer, Single Consumer). `ThreadPool` bertindak sebagai *Sender* (mengirim *closure* / fungsi yang harus dieksekusi), dan para `Worker` berbagi akses ke *Receiver*.
+3. **Penggunaan `Arc<Mutex<Receiver>>`:** Karena `Receiver` di Rust tidak bisa dibagi dan dimutasi oleh banyak *thread* secara bersamaan dengan aman, kita membungkusnya dengan `Arc` (Atomic Reference Counted) agar kepemilikannya bisa di-*share* ke banyak *worker*, dan `Mutex` (Mutual Exclusion) untuk memastikan hanya satu *worker* yang bisa mengambil satu *Job* dari antrean pada satu waktu.
+4. **Eksekusi (`pool.execute`):** Ketika `handle_connection` selesai dipanggil, fungsi tersebut dibungkus dalam sebuah *closure* (sebagai `Job`) dan dikirimkan lewat saluran komunikasi. Salah satu `Worker` yang sedang tidak sibuk akan mengunci (`lock`) Mutex, mengambil pekerjaan tersebut, mengeksekusinya, dan kembali ke status siaga setelah selesai.
+
+Dengan arsitektur ini, jika ada *slow request* (seperti `/sleep`), ia hanya akan memblokir satu *Worker*. Tiga *Worker* lainnya tetap bebas untuk melayani *request* lain dengan cepat.
