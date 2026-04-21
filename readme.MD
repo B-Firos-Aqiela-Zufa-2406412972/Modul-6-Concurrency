@@ -21,3 +21,17 @@ Pada tahap ini, kita memodifikasi `handle_connection` agar server dapat mengemba
 
 Berikut adalah screenshot hasil *run* di komputer saya:
 ![Commit 2 screen capture](assets/images/commit2.png)
+
+## Commit 3 Reflection notes
+
+Pada tahap ini, saya memodifikasi server agar bisa memvalidasi *request* dan memberikan respons yang berbeda (misalnya halaman 404 jika rute tidak ditemukan). 
+
+**Bagaimana cara memisahkan respons (splitting response)?**
+Saya memisahkannya dengan memeriksa baris pertama dari HTTP Request (`request_line`). Dengan menggunakan blok `if/else` di Rust, saya mengecek apakah request tersebut persis sama dengan `"GET / HTTP/1.1"`. Jika benar, variabel penampung akan diisi dengan status `200 OK` dan file `hello.html`. Jika tidak cocok (URL selain `/`), maka statusnya menjadi `404 NOT FOUND` dan file yang dipanggil adalah `404.html`.
+
+**Kenapa refactoring dibutuhkan?**
+Sebelum di-*refactor*, blok kode `if` dan `else` sama-sama berisi perintah untuk membaca file, menghitung panjang konten, memformat HTTP *response*, dan mengirimkannya ke *stream*. Hal ini menyebabkan duplikasi kode yang melanggar prinsip *Don't Repeat Yourself* (DRY). 
+Dengan refactoring, blok `if/else` hanya bertugas menentukan *nilai* dari `status_line` dan `filename`. Setelah itu, proses membaca file dan mengirim respons cukup ditulis **satu kali** saja di bawahnya. Ini membuat kode jauh lebih bersih, mudah dibaca, dan mudah dimodifikasi di kemudian hari.
+
+Berikut adalah screenshot hasil *run* di komputer saya:
+![Commit 3 screen capture](assets/images/commit3.png)
