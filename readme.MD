@@ -35,3 +35,13 @@ Dengan refactoring, blok `if/else` hanya bertugas menentukan *nilai* dari `statu
 
 Berikut adalah screenshot hasil *run* di komputer saya:
 ![Commit 3 screen capture](assets/images/commit3.png)
+
+## Commit 4 Reflection notes
+
+Pada tahap ini, penambahan rute baru `/sleep` yang akan membuat *thread* tertidur (`thread::sleep`) selama 10 detik sebelum mengembalikan respons. Rute ini digunakan untuk menyimulasikan *slow request* (proses yang memakan waktu komputasi lama).
+
+Ketika saya menguji dengan membuka dua tab browser—satu mengakses `/sleep` dan yang lainnya mengakses `/` secara bersamaan, saya menyadari bahwa tab kedua (`/`) tidak langsung dimuat. Tab kedua harus menunggu sampai proses di tab pertama selesai dieksekusi barulah halamannya muncul.
+
+**Mengapa hal ini terjadi?**
+Ini terjadi karena server kita saat ini beroperasi menggunakan **single thread**. Artinya, program ini mengeksekusi instruksi secara sekuensial (berurutan satu per satu) di satu jalur eksekusi utama. Saat fungsi `handle_connection` memproses permintaan `/sleep`, *thread* utama tersebut tertidur dan terblokir selama 10 detik. Karena tidak ada *thread* lain yang tersedia, server tidak dapat menerima, merespons, atau memproses koneksi baru yang masuk (seperti permintaan dari tab kedua) sampai permintaan pertama benar-benar selesai. 
+Di dunia nyata, arsitektur *single-threaded* seperti ini sangat berbahaya karena satu pengguna dengan koneksi lambat atau satu proses berat dapat membuat seluruh aplikasi *down* atau tidak responsif bagi seluruh pengguna lain.
